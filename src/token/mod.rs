@@ -44,9 +44,9 @@ static KEYWORDS: phf::Map<&'static str, Token> = phf::phf_map! {
     "return" => Token::Return,
 };
 
+// returns optional ref to the next element without consuming it
 #[derive(Debug)]
 pub struct Lexer<'a> {
-    // returns optional ref to the next element without consuming it
     pub chars: Peekable<Chars<'a>>,
 }
 
@@ -68,6 +68,12 @@ impl<'a> Iterator for Lexer<'a> {
                     }
                     return Some(Token::Bang);
                 }
+                Some('/') => return Some(Token::Slash),
+                Some('>') => return Some(Token::Gt),
+                Some('<') => return Some(Token::Lt),
+                Some('-') => return Some(Token::Minus),
+                Some('+') => return Some(Token::Plus),
+                Some(',') => return Some(Token::Comma),
                 Some('=') => {
                     if let Some(c) = self.peek() {
                         if *c == '=' {
@@ -77,24 +83,31 @@ impl<'a> Iterator for Lexer<'a> {
                     }
                     return Some(Token::Assign);
                 }
+                Some(';') => return Some(Token::Semicolon),
+                Some('(') => return Some(Token::Lparen),
+                Some(')') => return Some(Token::Rparen),
+                Some('{') => return Some(Token::Lsquirlybrace),
+                Some('}') => return Some(Token::Rsquirlybrace),
 
-                Some('/') => return Some(Token::Slash),
-                Some('>') => return Some(Token::Gt),
-                Some('<') => return Some(Token::Lt),
-                Some('-') => return Some(Token::Minus),
-                Some('+') => return Some(Token::Plus),
-                Some(',') => return Some(Token::Comma),
+                Some(c) if c.is_digit(10) => {
+                    let str = self.keep_reading(c, |c| c.is_digit(10));
+                    let str = str.into_iter().collect::<String>();
+                    return Some(Token::Int(
+                        str::parse::<usize>(&str).expect("this should always work"),
+                    ));
+                }
 
                 Some(c) if c.is_ascii_alphabetic() => {
                     let ident = self.keep_reading(c, |c| c.is_ascii_alphabetic());
-                    let ident = ident.iter().collect::<String>();
+                    let ident = ident.into_iter().collect::<String>();
 
+                    // phf::get_entry both the key and the value
                     if let Some((_, v)) = KEYWORDS.get_entry(&ident) {
-                        // phf::get_entry both the key and the value
                         return Some(v.clone());
                     }
                     return Some(Token::Identifier(ident));
                 }
+
                 Some(_) => return Some(Token::Illegal),
                 _ => return None,
             }
@@ -127,7 +140,6 @@ impl<'a> Lexer<'a> {
     // keep reading until there is no more char
     fn keep_reading(&mut self, c: char, f: impl Fn(&char) -> bool) -> Vec<char> {
         let mut out = vec![c];
-
         while let Some(c) = self.chars.next_if(&f) {
             out.push(c);
         }

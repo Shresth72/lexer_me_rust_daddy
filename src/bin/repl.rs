@@ -1,9 +1,9 @@
 use std::io::BufRead;
 
 use anyhow::Result;
-use interpreterbook::repl::Repl;
+use lexer_me_rust_daddy::repl::Repl;
 
-const PROMT: &'static str = ">>";
+const PROMPT: &'static str = ">>";
 
 fn main() -> Result<()> {
     let repl = Repl::new();
